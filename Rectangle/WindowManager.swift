@@ -75,11 +75,18 @@ class WindowManager {
         
         let currentWindowRect: CGRect = frontmostWindowElement.rectOfElement()
         
-        let lastRectangleAction = AppDelegate.windowHistory.lastRectangleActions[windowId]
+        var lastRectangleAction = AppDelegate.windowHistory.lastRectangleActions[windowId]
+        
+        let windowMovedExternally = currentWindowRect != lastRectangleAction?.rect
+        
+        if windowMovedExternally {
+            lastRectangleAction = nil
+            AppDelegate.windowHistory.lastRectangleActions.removeValue(forKey: windowId)
+        }
         
         if parameters.updateRestoreRect {
             if AppDelegate.windowHistory.restoreRects[windowId] == nil
-                || currentWindowRect != lastRectangleAction?.rect {
+                || windowMovedExternally {
                 AppDelegate.windowHistory.restoreRects[windowId] = currentWindowRect
             }
         }
@@ -135,11 +142,16 @@ class WindowManager {
             windowMover.moveWindowRect(newRect, frameOfScreen: usableScreens.frameOfCurrentScreen, visibleFrameOfScreen: visibleFrameOfDestinationScreen, frontmostWindowElement: frontmostWindowElement, action: action)
         }
         
+        let resultingRect = frontmostWindowElement.rectOfElement()
+        
         if usableScreens.currentScreen != calcResult.screen {
             frontmostWindowElement.bringToFront(force: true)
+            
+            if Defaults.moveCursorAcrossDisplays.userEnabled {
+                let windowCenter = NSMakePoint(NSMidX(resultingRect), NSMidY(resultingRect))
+                CGWarpMouseCursorPosition(windowCenter)
+            }
         }
-
-        let resultingRect = frontmostWindowElement.rectOfElement()
         
         recordAction(windowId: windowId, resultingRect: resultingRect, action: calcResult.resultingAction, subAction: calcResult.resultingSubAction)
         
